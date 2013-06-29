@@ -54,7 +54,7 @@ class GearmanAdminClientCommandHandler(GearmanCommandHandler):
 
         self._sent_commands.append(expected_server_command)
 
-        output_text = bytes('%s\n' % command_line, 'ASCII')
+        output_text = '{}\n'.format(command_line).encode()
         self.send_command(GEARMAN_COMMAND_TEXT_COMMAND, raw_text=output_text)
 
     def send_echo_request(self, echo_string):
