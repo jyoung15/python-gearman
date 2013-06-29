@@ -54,7 +54,7 @@ class GearmanAdminClientCommandHandler(GearmanCommandHandler):
 
         self._sent_commands.append(expected_server_command)
 
-        output_text = '%s\n' % command_line
+        output_text = bytes('%s\n' % command_line, 'ASCII')
         self.send_command(GEARMAN_COMMAND_TEXT_COMMAND, raw_text=output_text)
 
     def send_echo_request(self, echo_string):
@@ -93,14 +93,14 @@ class GearmanAdminClientCommandHandler(GearmanCommandHandler):
         """Slowly assemble a server status message line by line"""
         # If we received a '.', we've finished parsing this status message
         # Pack up our output and reset our response queue
-        if raw_text == '.':
+        if raw_text == b'.':
             output_response = tuple(self._status_response)
             self._recv_responses.append(output_response)
             self._status_response = []
             return False
 
         # If we didn't get a final response, split our line and interpret all the data
-        split_tokens = raw_text.split('\t')
+        split_tokens = raw_text.split(b'\t')
         if len(split_tokens) != self.STATUS_FIELDS:
             raise ProtocolError('Received %d tokens, expected %d tokens: %r' % (len(split_tokens), self.STATUS_FIELDS, split_tokens))
 
