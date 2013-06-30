@@ -53,16 +53,44 @@ def select(rlist, wlist, xlist, timeout=None):
     wr_list = []
     ex_list = []
 
-    select_args = [rlist, wlist, xlist]
-    if timeout is not None:
-        select_args.append(timeout)
+    if 'kqueue' in dir(select_lib):
+        kqueue = select_lib.kqueue()
+        try:
+            kevents_rd = [select_lib.kevent(rd.fileno(),
+                            filter=select_lib.KQ_FILTER_READ,
+                            flags=select_lib.KQ_EV_ADD | select_lib.KQ_EV_CLEAR,
+                            udata=rdi)
+                            for rdi, rd in enumerate(rlist)]
+            kevents_wr = [select_lib.kevent(wr.fileno(),
+                            filter=select_lib.KQ_FILTER_WRITE,
+                            flags=select_lib.KQ_EV_ADD | select_lib.KQ_EV_CLEAR,
+                            udata=wri)
+                            for wri, wr in enumerate(wlist)]
+            kevents_ex = [] # ???
+            kevents = kevents_rd + kevents_wr + kevents_ex
+            eventlist=kqueue.control(kevents, len(kevents), timeout)
+            for event in eventlist:
+                if event.filter == select_lib.KQ_FILTER_READ:
+                    rd_list.append(rlist[event.udata])
+                if event.filter == select_lib.KQ_FILTER_WRITE:
+                    wr_list.append(wlist[event.udata])
+        except select_lib.error as exc:
+            # Ignore interrupted system call, reraise anything else
+            if exc[0] != errno.EINTR:
+                raise
+        finally:
+            kqueue.close()
+    else:
+        select_args = [rlist, wlist, xlist]
+        if timeout is not None:
+            select_args.append(timeout)
 
-    try:
-        rd_list, wr_list, ex_list = select_lib.select(*select_args)
-    except select_lib.error as exc:
-        # Ignore interrupted system call, reraise anything else
-        if exc[0] != errno.EINTR:
-            raise
+        try:
+            rd_list, wr_list, ex_list = select_lib.select(*select_args)
+        except select_lib.error as exc:
+            # Ignore interrupted system call, reraise anything else
+            if exc[0] != errno.EINTR:
+                raise
 
     return rd_list, wr_list, ex_list
 
